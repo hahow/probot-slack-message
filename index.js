@@ -15,12 +15,19 @@ async function slackMessageBotOnIssueComment(context) {
   slackMessgae(context.payload.comment.body);
 }
 
+module.exports.slackMessageBotOnIssueComment = slackMessageBotOnIssueComment
+
 async function slackMessageBotOnRelease(context) {
   slackMessgae(context.payload.release.body);
 }
+
+module.exports.slackMessageBotOnRelease = slackMessageBotOnRelease
+
 async function slackMessageBotOnIssues(context) {
   slackMessgae(context.payload.issue.body);
 }
+
+module.exports.slackMessageBotOnIssues = slackMessageBotOnIssues
 
 async function slackMessgae(body) {
   const messgaes = extractSlackMessages(body);
