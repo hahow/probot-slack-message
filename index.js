@@ -1,24 +1,33 @@
 const httpRequest = require("request")
-const slackWebhookUrl = process.env.SLACK_WEBHOOK_URL;
+const slackWebhookUrl = process.env.SLACK_MESSAGE_WEBHOOK_URL;
+const slackToken = process.env.SLACK_TOKEN;
+const { findIndex } = require('lodash');
 
 module.exports = (robot) => {
-  // Your code here
-  console.log('Yay, slack message bot loaded!')
+  console.log('[slack message bot]: ON!')
 
-  robot.on('release', onRelease);
-  robot.on('issues', onIssues);
+  robot.on('release', slackMessageBotOnRelease);
+  robot.on('issues', slackMessageBotOnIssues);
+  robot.on('issue_comment', slackMessageBotOnIssueComment);
 }
 
+async function slackMessageBotOnIssueComment(context) {
+  slackMessgae(context.payload.comment.body);
+}
 
-async function onRelease(context) {
+async function slackMessageBotOnRelease(context) {
   slackMessgae(context.payload.release.body);
 }
-async function onIssues(context) {
+async function slackMessageBotOnIssues(context) {
   slackMessgae(context.payload.issue.body);
 }
 
 async function slackMessgae(body) {
   const messgaes = extractSlackMessages(body);
+  if (!messgaes.length) {
+    console.log('[slack message bot]: no message, skip.');
+    return;
+  }
   sendSlackMessage(messgaes);
 }
   
@@ -50,14 +59,43 @@ function extractSlackMessageUser(message) {
   return [];
 }
 
-function sendSlackMessage(messgaes) {
+async function getSlackUsers() {
+  return new Promise((resolve, reject) => {
+    httpRequest.get('https://slack.com/api/users.list', {
+      "headers": {
+        "Authorization": "Bearer " + slackToken
+      }
+    }, (err, httpResponse, body) => {
+      if(err){
+        console.error(err);
+        reject(err);
+      }
+      resolve(JSON.parse(body).members);
+    });
+  })
+}
+
+function getSlackUserId(users, user) {
+  const userIndex = findIndex(users, {
+    real_name: user
+  });
+  if (userIndex !== -1) {
+    return users[userIndex].id;
+  }
+  return null;
+}
+
+async function sendSlackMessage(messgaes) {
+  const SlackUsers = await getSlackUsers();
+
   messgaes.forEach((message) => {
     const notifyPrefix = '<@';
     const notifyPostfix = '>';
     const slackPayloadObj = {};
-
+    
     const userNotify = message.users.map((user) => {
-      return `${notifyPrefix}${user}${notifyPostfix}`;
+      const userId = getSlackUserId(SlackUsers, user);
+      return `${notifyPrefix}${userId ? userId : user}${notifyPostfix}`;
     }).join(' ');
 
     slackPayloadObj.text = `${userNotify} ${message.content}`;
