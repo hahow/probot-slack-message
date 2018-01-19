@@ -7,7 +7,7 @@ module.exports = (robot) => {
   console.log('[slack message bot]: ON!')
 
   robot.on('release', slackMessageBotOnRelease);
-  robot.on('issues', slackMessageBotOnIssues);
+  robot.on('issues.opened', slackMessageBotOnIssues);
   robot.on('issue_comment', slackMessageBotOnIssueComment);
 }
 
